@@ -15,7 +15,7 @@ node_modules/
 
 # User configuration
 .env
-pluralkit.conf
+#pluralkit.conf
 pluralkit.*.conf
 *.DotSettings.user
 
