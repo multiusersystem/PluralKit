@@ -23,8 +23,9 @@
 as $$
     -- CTEs to query "static" (accessible only through args) data
     with
-        system as (select systems.*, system_guild.tag as guild_tag, system_guild.tag_enabled as tag_enabled, allow_autoproxy as account_autoproxy from accounts
+        system as (select systems.*, system_config.latch_timeout, system_guild.tag as guild_tag, system_guild.tag_enabled as tag_enabled, allow_autoproxy as account_autoproxy from accounts
             left join systems on systems.id = accounts.system
+            left join system_config on system_config.system = accounts.system
             left join system_guild on system_guild.system = accounts.system and system_guild.guild = guild_id
             where accounts.uid = account_id),
         guild as (select * from servers where id = guild_id),

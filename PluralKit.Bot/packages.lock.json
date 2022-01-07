@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    ".NETCoreApp,Version=v5.0": {
+    "net6.0": {
       "Humanizer.Core": {
         "type": "Direct",
         "requested": "[2.8.26, )",
@@ -134,6 +134,11 @@
           "System.Buffers": "4.5.0",
           "System.Diagnostics.DiagnosticSource": "4.5.1"
         }
+      },
+      "IPNetwork2": {
+        "type": "Transitive",
+        "resolved": "2.5.381",
+        "contentHash": "MUx9JEtZINtK8bqBAOdz8PpGMK5Rfw6NtQ6gzux95AK8EOJ2naQTRKLUOJfm9aPb0rCfZgSoVKBU4XSXUoKxRw=="
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
@@ -1383,7 +1388,8 @@
           "Serilog.Sinks.File": "4.1.0",
           "SqlKata": "2.3.7",
           "SqlKata.Execution": "2.3.7",
-          "System.Interactive.Async": "5.0.0"
+          "System.Interactive.Async": "5.0.0",
+          "ipnetwork2": "2.5.381"
         }
       }
     }

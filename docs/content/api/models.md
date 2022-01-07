@@ -28,7 +28,6 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 |banner|?string|256-character limit, must be a publicly-accessible URL|
 |color|string|6-character hex code, no `#` at the beginning|
 |created|datetime||
-|timezone|string|defaults to `UTC`|
 |privacy|?system privacy object||
 
 * System privacy keys: `description_privacy`, `member_list_privacy`, `group_list_privacy`, `front_privacy`, `front_history_privacy`
@@ -96,13 +95,30 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 |original| snowflake|The ID of the (now-deleted) message that triggered the proxy. Encoded as string for precision reasons.|
 |sender|snowflake|The user ID of the account that triggered the proxy. Encoded as string for precision reasons.|
 |channel|snowflake|The ID of the channel the message was sent in. Encoded as string for precision reasons.|
+|guild|snowflake|The ID of the server the message was sent in. Encoded as string for precision reasons.|
 |system|full System object|The system that proxied the message.|
 |member|full Member object|The member that proxied the message.|
+
+### System settings model
+
+|key|type|notes|
+|---|---|---|
+|timezone|string|defaults to `UTC`|
+|pings_enabled|boolean|
+|latch_timeout|int?|
+|member_default_private*|bool|whether members created through the bot have privacy settings set to private by default|
+|group_default_private*|bool|whether groups created through the bot have privacy settings set to private by default|
+|show_private_info|bool|whether the bot shows the system's own private information without a `-private` flag|
+|member_limit|int|read-only, defaults to 1000|
+|group_limit|int|read-only, defaults to 250|
+
+\* this *does not* affect members/groups created through the API - please specify privacy keys in the JSON payload instead
 
 ### System guild settings model
 
 |key|type|notes|
 |---|---|---|
+|guild_id|snowflake|only sent if the guild ID isn't already known (in dispatch payloads)|
 |proxying_enabled|boolean||
 |autoproxy_mode|autoproxy mode enum||
 |autoproxy_member|?string|must be set if autoproxy_mode is `member`|
@@ -122,5 +138,6 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 
 |key|type|notes|
 |---|---|---|
+|guild_id|snowflake|only sent if the guild ID isn't already known (in dispatch payloads)|
 |display_name|?string|100-character limit|
 |avatar_url|?string|256-character limit, must be a publicly-accessible URL|

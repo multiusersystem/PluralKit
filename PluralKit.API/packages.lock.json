@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    ".NETCoreApp,Version=v5.0": {
+    "net6.0": {
       "Microsoft.AspNetCore.Mvc.NewtonsoftJson": {
         "type": "Direct",
         "requested": "[3.1.0, )",
@@ -221,6 +221,11 @@
         "type": "Transitive",
         "resolved": "2.8.26",
         "contentHash": "OiKusGL20vby4uDEswj2IgkdchC1yQ6rwbIkZDVBPIR6al2b7n3pC91elBul9q33KaBgRKhbZH3+2Ur4fnWx2A=="
+      },
+      "IPNetwork2": {
+        "type": "Transitive",
+        "resolved": "2.5.381",
+        "contentHash": "MUx9JEtZINtK8bqBAOdz8PpGMK5Rfw6NtQ6gzux95AK8EOJ2naQTRKLUOJfm9aPb0rCfZgSoVKBU4XSXUoKxRw=="
       },
       "Microsoft.AspNetCore.JsonPatch": {
         "type": "Transitive",
@@ -1600,7 +1605,8 @@
           "Serilog.Sinks.File": "4.1.0",
           "SqlKata": "2.3.7",
           "SqlKata.Execution": "2.3.7",
-          "System.Interactive.Async": "5.0.0"
+          "System.Interactive.Async": "5.0.0",
+          "ipnetwork2": "2.5.381"
         }
       }
     }

@@ -28,6 +28,20 @@ Takes a partial [system object](/api/models#system-model).
 
 Returns a [system object](/api/models#system-model).
 
+### Get System Settings
+
+GET `/systems/{systemRef}/settings`
+
+Returns a [system settings object](/api/models#system-settings-model).
+
+### Update System Settings
+
+PATCH `/systems/{systemRef}/settings`
+
+Takes a partial [system settings object](/api/models#system-settings-model).
+
+Returns a [system settings object](/api/models#system-settings-model).
+
 ### Get System Guild Settings
 
 GET `/systems/@me/guilds/{guild_id}`
@@ -204,7 +218,8 @@ Takes an array of member references as input. (An empty list is accepted.) Retur
 ---
 ## Switches
 
-*`switchRef` must be a switch's UUID. On POST/PATCH/DELETE endpoints, `systemRef` must be `@me`.*
+*`switchRef` must be a switch's UUID. `systemRef` can be a system's short (5-character) ID, a system's UUID, the ID of a Discord account linked to the system, or the string `@me` to refer to the currently authenticated system.*
+
 
 ### Get System Switches
 

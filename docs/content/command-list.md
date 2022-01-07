@@ -35,17 +35,16 @@ Some arguments indicate the use of specific Discord features. These include:
 *Optionally replace `[system]` with a @mention, Discord account ID, or 5-character ID. For most commands, adding `-clear` will clear/delete the field.*
 - `pk;system [system]` - Shows information about a system.
 - `pk;system new [name]` - Creates a new system registered to your account.
-- `pk;system rename [new name]` - Changes the name of your system.
-- `pk;system description [description]` - Changes the description of your system.
-- `pk;system avatar [avatar url|@mention|upload]` - Changes the avatar of your system.
-- `pk;system banner [image url|upload]` - Changes your system's banner image.
-- `pk;system privacy` - Displays your system's current privacy settings.
-- `pk;system privacy <subject> <public|private>` - Changes your systems privacy settings.
-- `pk;system tag [tag]` - Changes the system tag of your system.
-- `pk;system servertag [tag|-enable|-disable]` - Changes your system's tag in the current server, or disables it for the current server.
-- `pk;system timezone [location]` - Changes the time zone of your system.
+- `pk;system [system] rename [new name]` - Changes the name of your system.
+- `pk;system [system] description [description]` - Changes the description of your system.
+- `pk;system [system] avatar [avatar url|@mention|upload]` - Changes the avatar of your system.
+- `pk;system [system] banner [image url|upload]` - Changes your system's banner image.
+- `pk;system [system] privacy` - Displays your system's current privacy settings.
+- `pk;system [system] privacy <subject> <public|private>` - Changes your systems privacy settings.
+- `pk;system [system] tag [tag]` - Changes the system tag of your system.
+- `pk;system [system] servertag [tag|-enable|-disable]` - Changes your system's tag in the current server, or disables it for the current server.
 - `pk;system proxy [server id] [on|off]` - Toggles message proxying for a specific server.
-- `pk;system delete` - Deletes your system.
+- `pk;system [system] delete` - Deletes your system.
 - `pk;system [system] fronter` - Shows the current fronter of a system.
 - `pk;system [system] fronthistory` - Shows the last 10 fronters of a system.
 - `pk;system [system] frontpercent [timeframe]` - Shows the aggregated front history of a system within a given time frame.
@@ -54,8 +53,6 @@ Some arguments indicate the use of specific Discord features. These include:
 - `pk;find <search term>` - Searches members by name.
 - `pk;system [system] find <search term>` - (same as above, but for a specific system)
 - `pk;autoproxy [off|front|latch|member]` - Updates the system's autoproxy settings for a given server.
-- `pk;link <account>` - Links this system to a different account.
-- `pk;unlink [account]` - Unlinks an account from this system.
 
 ## Member commands
 *Replace `<member>` with a member's name, 5-character ID or display name. For most commands, adding `-clear` will clear/delete the field.*
@@ -107,8 +104,12 @@ Some arguments indicate the use of specific Discord features. These include:
 
 ## Autoproxy commands
 - `pk;autoproxy [off|front|latch|<member>]` - Sets your system's autoproxy mode for the current server.
-- `pk;autoproxy timeout [<duration>|off|reset]` - Sets the latch timeout duration for your system.
-- `pk;autoproxy account [on|off]` - Toggles autoproxy globally for the current account.
+
+## Config commands
+- `pk;config timezone [location]` - Changes the time zone of your system.
+- `pk;config ping <enable|disable>` - Changes your system's ping preferences.
+- `pk;config autoproxy timeout [<duration>|off|reset]` - Sets the latch timeout duration for your system.
+- `pk;config autoproxy account [on|off]` - Toggles autoproxy globally for the current account.
 
 ## Server owner commands
 *(all commands here require Manage Server permission)*
@@ -117,7 +118,7 @@ Some arguments indicate the use of specific Discord features. These include:
 - `pk;log channel -clear` - Clears the currently set log channel.
 - `pk;log disable <#channel> [#channel...]` - Disables logging messages posted in the given channel(s) (useful for staff channels and such).
 - `pk;log enable <#channel> [#channel...]` - Re-enables logging messages posted in the given channel(s).
-- `pk;logclean <on|off>` - Enables or disables [log cleanup](./staff/compatibility.md#log-cleanup).
+- `pk;logclean <on|off>` - Enables or disables [log cleanup](/staff/compatibility/#log-cleanup).
 - `pk;blacklist add <#channel> [#channel...]` - Adds the given channel(s) to the proxy blacklist (proxying will be disabled here)
 - `pk;blacklist remove <#channel> [#channel...]` - Removes the given channel(s) from the proxy blacklist.
 
@@ -127,19 +128,21 @@ Some arguments indicate the use of specific Discord features. These include:
 - `pk;invite` - Sends the bot invite link for PluralKit.
 - `pk;import` - Imports a data file from PluralKit or Tupperbox.
 - `pk;export` - Exports a data file containing your system information.
-- `pk;debug permissions [server id]` - [Checks the given server's permission setup](./staff/permissions.md#permission-checker-command) to check if it's compatible with PluralKit.
+- `pk;debug permissions [server id]` - [Checks the given server's permission setup](/staff/permissions/#permission-checker-command) to check if it's compatible with PluralKit.
 - `pk;debug proxying <message link|reply>` - Checks why your message has not been proxied.
 - `pk;edit [message link|reply] <new content>` - Edits a proxied message. Without an explicit message target, will target the last message proxied by your system in the current channel. **Does not support message IDs!**
+- `pk;link <account>` - Links your system to a different account.
+- `pk;unlink [account]` - Unlinks an account from your system.
 
 ## API
-*(for using the [PluralKit API](./api-documentation.md), useful for developers)*
+*(for using the [PluralKit API](/api), useful for developers)*
 - `pk;token` - DMs you a token for using the PluralKit API.
 - `pk;token refresh` - Refreshes your API token and invalidates the old one.
 - `pk;s webhook [url]` - Shows or updates the [dispatch webhook](/api/dispatch) URL for your system.
 
 ## Help
 - `pk;help` - Displays a basic help message describing how to use the bot.
-- `pk;help proxy` - Directs you to [this page](./user-guide.md#proxying).
+- `pk;help proxy` - Directs you to [this page](/guide/#proxying).
 - `pk;system help` - Lists system-related commands.
 - `pk;member help` - Lists member-related commands.
 - `pk;switch help` - Lists switch-related commands.
