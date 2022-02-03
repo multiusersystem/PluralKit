@@ -4,17 +4,13 @@ namespace PluralKit.Bot;
 
 public class Random
 {
-    private readonly IDatabase _db;
     private readonly EmbedService _embeds;
-    private readonly ModelRepository _repo;
 
     private readonly global::System.Random randGen = new();
 
-    public Random(EmbedService embeds, IDatabase db, ModelRepository repo)
+    public Random(EmbedService embeds)
     {
         _embeds = embeds;
-        _db = db;
-        _repo = repo;
     }
 
     // todo: get postgresql to return one random member/group instead of querying all members/groups
@@ -23,7 +19,7 @@ public class Random
     {
         ctx.CheckSystem();
 
-        var members = await _repo.GetSystemMembers(ctx.System.Id).ToListAsync();
+        var members = await ctx.Repository.GetSystemMembers(ctx.System.Id).ToListAsync();
 
         if (!ctx.MatchFlag("all", "a"))
             members = members.Where(m => m.MemberVisibility == PrivacyLevel.Public).ToList();
@@ -41,9 +37,9 @@ public class Random
     {
         ctx.CheckSystem();
 
-        var groups = await _db.Execute(c => c.QueryGroupList(ctx.System.Id));
+        var groups = await ctx.Repository.GetSystemGroups(ctx.System.Id).ToListAsync();
         if (!ctx.MatchFlag("all", "a"))
-            groups = groups.Where(g => g.Visibility == PrivacyLevel.Public);
+            groups = groups.Where(g => g.Visibility == PrivacyLevel.Public).ToList();
 
         if (groups == null || !groups.Any())
             throw new PKError(
@@ -55,11 +51,12 @@ public class Random
 
     public async Task GroupMember(Context ctx, PKGroup group)
     {
-        var opts = ctx.ParseMemberListOptions(ctx.DirectLookupContextFor(group.System));
+        ctx.CheckOwnGroup(group);
+
+        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(group.System));
         opts.GroupFilter = group.Id;
 
-        await using var conn = await _db.Obtain();
-        var members = await conn.QueryMemberList(ctx.System.Id, opts.ToQueryOptions());
+        var members = await ctx.Database.Execute(conn => conn.QueryMemberList(ctx.System.Id, opts.ToQueryOptions()));
 
         if (members == null || !members.Any())
             throw new PKError(

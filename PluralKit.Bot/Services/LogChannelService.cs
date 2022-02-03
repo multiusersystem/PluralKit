@@ -37,24 +37,24 @@ public class LogChannelService
     public async ValueTask LogMessage(MessageContext ctx, PKMessage proxiedMessage, Message trigger,
                                       Message hookMessage, string oldContent = null)
     {
-        var logChannel = await GetAndCheckLogChannel(ctx, trigger, proxiedMessage);
-        if (logChannel == null)
+        var logChannelId = await GetAndCheckLogChannel(ctx, trigger, proxiedMessage);
+        if (logChannelId == null)
             return;
 
         var triggerChannel = await _cache.GetChannel(proxiedMessage.Channel);
 
         var system = await _repo.GetSystem(ctx.SystemId.Value);
-        var member = await _repo.GetMember(proxiedMessage.Member);
+        var member = await _repo.GetMember(proxiedMessage.Member!.Value);
 
         // Send embed!
         var embed = _embed.CreateLoggedMessageEmbed(trigger, hookMessage, system.Hid, member, triggerChannel.Name,
             oldContent);
         var url =
             $"https://discord.com/channels/{proxiedMessage.Guild.Value}/{proxiedMessage.Channel}/{proxiedMessage.Mid}";
-        await _rest.CreateMessage(logChannel.Id, new MessageRequest { Content = url, Embed = embed });
+        await _rest.CreateMessage(logChannelId.Value, new MessageRequest { Content = url, Embed = embed });
     }
 
-    private async Task<Channel?> GetAndCheckLogChannel(MessageContext ctx, Message trigger,
+    private async Task<ulong?> GetAndCheckLogChannel(MessageContext ctx, Message trigger,
                                                        PKMessage proxiedMessage)
     {
         if (proxiedMessage.Guild == null && proxiedMessage.Channel != trigger.ChannelId)
@@ -71,7 +71,7 @@ public class LogChannelService
             // we're editing a message from a different server, get log channel info from the database
             var guild = await _repo.GetGuild(proxiedMessage.Guild.Value);
             logChannelId = guild.LogChannel;
-            isBlacklisted = guild.Blacklist.Any(x => x == logChannelId);
+            isBlacklisted = guild.LogBlacklist.Any(x => x == trigger.ChannelId);
         }
 
         if (ctx.SystemId == null || logChannelId == null || isBlacklisted) return null;
@@ -90,7 +90,7 @@ public class LogChannelService
             return null;
         }
 
-        return logChannel;
+        return logChannel.Id;
     }
 
     private async Task<Channel?> FindLogChannel(ulong guildId, ulong channelId)

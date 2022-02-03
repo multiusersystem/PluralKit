@@ -99,6 +99,19 @@ public static class ContextArgumentsExt
     public static bool MatchRaw(this Context ctx) =>
         ctx.Match("r", "raw") || ctx.MatchFlag("r", "raw");
 
+    public static bool MatchToggle(this Context ctx)
+    {
+        var yesToggles = new[] { "yes", "on", "enable", "enabled", "true" };
+        var noToggles = new[] { "no", "off", "disable", "disabled", "false" };
+
+        if (ctx.Match(yesToggles) || ctx.MatchFlag(yesToggles))
+            return true;
+        else if (ctx.Match(noToggles) || ctx.MatchFlag(noToggles))
+            return false;
+        else
+            throw new PKError("You must pass either \"on\" or \"off\" to this command.");
+    }
+
     public static (ulong? messageId, ulong? channelId) MatchMessage(this Context ctx, bool parseRawMessageId)
     {
         if (ctx.Message.Type == Message.MessageType.Reply && ctx.Message.MessageReference?.MessageId != null)

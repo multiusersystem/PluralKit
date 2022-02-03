@@ -7,8 +7,7 @@ using PluralKit.Core;
 namespace PluralKit.API;
 
 [ApiController]
-[ApiVersion("1.0")]
-[Route("v{version:apiVersion}/msg")]
+[Route("v1")]
 public class MessageController: ControllerBase
 {
     private readonly IDatabase _db;
@@ -20,12 +19,13 @@ public class MessageController: ControllerBase
         _db = db;
     }
 
-    [HttpGet("{mid}")]
+    [HttpGet("msg/{mid}")]
     public async Task<ActionResult<JObject>> GetMessage(ulong mid)
     {
         var msg = await _db.Execute(c => _repo.GetMessage(c, mid));
         if (msg == null) return NotFound("Message not found.");
 
-        return msg.ToJson(User.ContextFor(msg.System), APIVersion.V1);
+        var ctx = msg.System == null ? LookupContext.ByNonOwner : User.ContextFor(msg.System);
+        return msg.ToJson(ctx, APIVersion.V1);
     }
 }

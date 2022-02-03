@@ -26,10 +26,11 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
     private readonly ILogger _logger;
     private readonly ModelRepository _repo;
     private readonly DiscordApiClient _rest;
+    private readonly PrivateChannelService _dmCache;
 
     public ReactionAdded(ILogger logger, IDatabase db, ModelRepository repo,
                          CommandMessageService commandMessageService, IDiscordCache cache, Bot bot, Cluster cluster,
-                         DiscordApiClient rest, EmbedService embeds)
+                         DiscordApiClient rest, EmbedService embeds, PrivateChannelService dmCache)
     {
         _db = db;
         _repo = repo;
@@ -40,26 +41,24 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
         _rest = rest;
         _embeds = embeds;
         _logger = logger.ForContext<ReactionAdded>();
+        _dmCache = dmCache;
     }
 
-    public async Task Handle(Shard shard, MessageReactionAddEvent evt)
+    public async Task Handle(int shardId, MessageReactionAddEvent evt)
     {
         await TryHandleProxyMessageReactions(evt);
     }
 
     private async ValueTask TryHandleProxyMessageReactions(MessageReactionAddEvent evt)
     {
-        // Sometimes we get events from users that aren't in the user cache
-        // We just ignore all of those for now, should be quite rare...
-        if (!(await _cache.TryGetUser(evt.UserId) is User user))
-            return;
-
         // ignore any reactions added by *us*
         if (evt.UserId == await _cache.GetOwnUser())
             return;
 
         // Ignore reactions from bots (we can't DM them anyway)
-        if (user.Bot) return;
+        // note: this used to get from cache since this event does not contain Member in DMs
+        // but we aren't able to get DMs from bots anyway, so it's not really needed
+        if (evt.GuildId != null && evt.Member.User.Bot) return;
 
         var channel = await _cache.GetChannel(evt.ChannelId);
 
@@ -128,7 +127,7 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
         var system = await _repo.GetSystemByAccount(evt.UserId);
 
         // Can only delete your own message
-        if (msg.System.Id != system?.Id) return;
+        if (msg.System?.Id != system?.Id && msg.Message.Sender != evt.UserId) return;
 
         try
         {
@@ -146,9 +145,11 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
     {
         // Can only delete your own message
         // (except in DMs, where msg will be null)
-        // todo: don't try to delete the user's messages
         if (msg != null && msg.AuthorId != evt.UserId)
             return;
+
+        // todo: don't try to delete the user's own messages in DMs
+        // this is hard since we don't have the message author object, but it happens infrequently enough to not really care about the 403s, I guess?
 
         try
         {
@@ -169,20 +170,21 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
         // Try to DM the user info about the message
         try
         {
-            var dm = await _cache.GetOrCreateDmChannel(_rest, evt.UserId);
-            await _rest.CreateMessage(dm.Id, new MessageRequest
-            {
-                Embed = await _embeds.CreateMemberEmbed(
-                    msg.System,
-                    msg.Member,
-                    guild,
-                    LookupContext.ByNonOwner,
-                    DateTimeZone.Utc
-                )
-            });
+            var dm = await _dmCache.GetOrCreateDmChannel(evt.UserId);
+            if (msg.Member != null)
+                await _rest.CreateMessage(dm, new MessageRequest
+                {
+                    Embed = await _embeds.CreateMemberEmbed(
+                        msg.System,
+                        msg.Member,
+                        guild,
+                        LookupContext.ByNonOwner,
+                        DateTimeZone.Utc
+                    )
+                });
 
             await _rest.CreateMessage(
-                dm.Id,
+                dm,
                 new MessageRequest { Embed = await _embeds.CreateMessageInfoEmbed(msg, true) }
             );
         }
@@ -201,6 +203,8 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
         var member = await _rest.GetGuildMember(evt.GuildId!.Value, evt.UserId);
         var requiredPerms = PermissionSet.ViewChannel | PermissionSet.SendMessages;
         if (member == null || !(await _cache.PermissionsFor(evt.ChannelId, member)).HasFlag(requiredPerms)) return;
+
+        if (msg.Member == null) return;
 
         var config = await _repo.GetSystemConfig(msg.System.Id);
 
@@ -232,15 +236,15 @@ public class ReactionAdded: IEventHandler<MessageReactionAddEvent>
             // If not, tell them in DMs (if we can)
             try
             {
-                var dm = await _cache.GetOrCreateDmChannel(_rest, evt.UserId);
-                await _rest.CreateMessage(dm.Id,
+                var dm = await _dmCache.GetOrCreateDmChannel(evt.UserId);
+                await _rest.CreateMessage(dm,
                     new MessageRequest
                     {
                         Content =
                             $"{Emojis.Error} {msg.Member.DisplayName()}'s system has disabled reaction pings. If you want to mention them anyway, you can copy/paste the following message:"
                     });
                 await _rest.CreateMessage(
-                    dm.Id,
+                    dm,
                     new MessageRequest { Content = $"<@{msg.Message.Sender}>".AsCode() }
                 );
             }

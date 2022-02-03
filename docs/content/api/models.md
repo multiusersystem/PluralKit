@@ -76,7 +76,7 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 |color|string|6-character hex code, no `#` at the beginning|
 |privacy|?group privacy object||
 
-* Group privacy keys: `description_privacy`, `icon_privacy`, `list_privacy`, `visibility`
+* Group privacy keys: `name_privacy`, `description_privacy`, `icon_privacy`, `list_privacy`, `metadata_privacy`, `visibility`
 
 ### Switch model
 
@@ -96,8 +96,8 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 |sender|snowflake|The user ID of the account that triggered the proxy. Encoded as string for precision reasons.|
 |channel|snowflake|The ID of the channel the message was sent in. Encoded as string for precision reasons.|
 |guild|snowflake|The ID of the server the message was sent in. Encoded as string for precision reasons.|
-|system|full System object|The system that proxied the message.|
-|member|full Member object|The member that proxied the message.|
+|system?|full System object|The system that proxied the message. Null if the member associated with this message was deleted.|
+|member?|full Member object|The member that proxied the message. Null if the member associated with this message was deleted.|
 
 ### System settings model
 
@@ -106,9 +106,9 @@ Every PluralKit entity has two IDs: a short (5-character) ID and a longer UUID. 
 |timezone|string|defaults to `UTC`|
 |pings_enabled|boolean|
 |latch_timeout|int?|
-|member_default_private*|bool|whether members created through the bot have privacy settings set to private by default|
-|group_default_private*|bool|whether groups created through the bot have privacy settings set to private by default|
-|show_private_info|bool|whether the bot shows the system's own private information without a `-private` flag|
+|member_default_private*|boolean|whether members created through the bot have privacy settings set to private by default|
+|group_default_private*|boolean|whether groups created through the bot have privacy settings set to private by default|
+|show_private_info|boolean|whether the bot shows the system's own private information without a `-private` flag|
 |member_limit|int|read-only, defaults to 1000|
 |group_limit|int|read-only, defaults to 250|
 

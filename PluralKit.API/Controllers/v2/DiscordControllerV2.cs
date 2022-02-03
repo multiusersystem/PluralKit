@@ -7,8 +7,7 @@ using PluralKit.Core;
 namespace PluralKit.API;
 
 [ApiController]
-[ApiVersion("2.0")]
-[Route("v{version:apiVersion}")]
+[Route("v2")]
 public class DiscordControllerV2: PKControllerBase
 {
     public DiscordControllerV2(IServiceProvider svc) : base(svc) { }
@@ -148,7 +147,7 @@ public class DiscordControllerV2: PKControllerBase
         if (msg == null)
             throw Errors.MessageNotFound;
 
-        var ctx = ContextFor(msg.System);
+        var ctx = msg.System == null ? LookupContext.ByNonOwner : ContextFor(msg.System);
         return msg.ToJson(ctx, APIVersion.V2);
     }
 }

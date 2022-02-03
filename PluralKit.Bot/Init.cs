@@ -16,20 +16,20 @@ namespace PluralKit.Bot;
 
 public class Init
 {
-    private static Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
         // Load configuration and run global init stuff
         var config = InitUtils.BuildConfiguration(args).Build();
         InitUtils.InitStatic();
 
+        // init version service
+        await BuildInfoService.LoadVersion();
+
         // Set up DI container and modules
         var services = BuildContainer(config);
 
-        return RunWrapper(services, async ct =>
+        await RunWrapper(services, async ct =>
         {
-            // init version service
-            await BuildInfoService.LoadVersion();
-
             var logger = services.Resolve<ILogger>().ForContext<Init>();
 
             // Initialize Sentry SDK, and make sure it gets dropped at the end
@@ -42,6 +42,11 @@ public class Init
                 opts.DisableTaskUnobservedTaskExceptionCapture();
             });
 
+            // initialize Redis
+            var coreConfig = services.Resolve<CoreConfig>();
+            var redis = services.Resolve<RedisService>();
+            await redis.InitAsync(coreConfig);
+
             var config = services.Resolve<BotConfig>();
             if (config.Cluster == null)
             {
@@ -49,8 +54,8 @@ public class Init
                 logger.Information("Connecting to database");
                 await services.Resolve<IDatabase>().ApplyMigrations();
 
-                // if we're running single-process, clear any existing shard status from the database
-                await services.Resolve<ModelRepository>().ClearShardStatus();
+                // Clear shard status from Redis
+                await redis.Connection.GetDatabase().KeyDeleteAsync("pluralkit:shardstatus");
             }
 
             // Init the bot instance itself, register handlers and such to the client before beginning to connect
@@ -141,6 +146,8 @@ public class Init
     {
         var info = await services.Resolve<DiscordApiClient>().GetGatewayBot();
 
+        var redis = services.Resolve<RedisService>();
+
         var cluster = services.Resolve<Cluster>();
         var config = services.Resolve<BotConfig>();
 
@@ -155,11 +162,11 @@ public class Init
             var shardMin = (int)Math.Round(totalShards * (float)nodeIndex / totalNodes);
             var shardMax = (int)Math.Round(totalShards * (float)(nodeIndex + 1) / totalNodes) - 1;
 
-            await cluster.Start(info.Url, shardMin, shardMax, totalShards, info.SessionStartLimit.MaxConcurrency);
+            await cluster.Start(info.Url, shardMin, shardMax, totalShards, info.SessionStartLimit.MaxConcurrency, redis.Connection);
         }
         else
         {
-            await cluster.Start(info);
+            await cluster.Start(info, redis.Connection);
         }
     }
 }

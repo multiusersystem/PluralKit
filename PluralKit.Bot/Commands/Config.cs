@@ -11,13 +11,6 @@ using PluralKit.Core;
 namespace PluralKit.Bot;
 public class Config
 {
-    private readonly ModelRepository _repo;
-
-    public Config(ModelRepository repo)
-    {
-        _repo = repo;
-    }
-
     private record PaginatedConfigItem(string Key, string Description, string? CurrentValue, string DefaultValue);
 
     public async Task ShowConfig(Context ctx)
@@ -122,27 +115,18 @@ public class Config
             }
         );
     }
+    private string EnabledDisabled(bool value) => value ? "enabled" : "disabled";
 
     public async Task AutoproxyAccount(Context ctx)
     {
-        // todo: this might be useful elsewhere, consider moving it to ctx.MatchToggle
-        if (ctx.Match("enable", "on"))
-            await AutoproxyEnableDisable(ctx, true);
-        else if (ctx.Match("disable", "off"))
-            await AutoproxyEnableDisable(ctx, false);
-        else if (ctx.HasNext())
-            throw new PKSyntaxError("You must pass either \"on\" or \"off\".");
-        else
+        if (!ctx.HasNext())
         {
-            var statusString = ctx.MessageContext.AllowAutoproxy ? "enabled" : "disabled";
-            await ctx.Reply($"Autoproxy is currently **{statusString}** for account <@{ctx.Author.Id}>.");
+            await ctx.Reply($"Autoproxy is currently **{EnabledDisabled(ctx.MessageContext.AllowAutoproxy)}** for account <@{ctx.Author.Id}>.");
+            return;
         }
-    }
 
-    private string EnabledDisabled(bool value) => value ? "enabled" : "disabled";
+        var allow = ctx.MatchToggle();
 
-    private async Task AutoproxyEnableDisable(Context ctx, bool allow)
-    {
         var statusString = EnabledDisabled(allow);
         if (ctx.MessageContext.AllowAutoproxy == allow)
         {
@@ -150,7 +134,7 @@ public class Config
             return;
         }
         var patch = new AccountPatch { AllowAutoproxy = allow };
-        await _repo.UpdateAccount(ctx.Author.Id, patch);
+        await ctx.Repository.UpdateAccount(ctx.Author.Id, patch);
         await ctx.Reply($"{Emojis.Success} Autoproxy {statusString} for account <@{ctx.Author.Id}>.");
     }
 
@@ -190,7 +174,7 @@ public class Config
             else newTimeout = timeoutPeriod;
         }
 
-        await _repo.UpdateSystemConfig(ctx.System.Id, new() { LatchTimeout = (int?)newTimeout?.TotalSeconds });
+        await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { LatchTimeout = (int?)newTimeout?.TotalSeconds });
 
         if (newTimeout == null)
             await ctx.Reply($"{Emojis.Success} Latch timeout reset to default ({ProxyMatcher.DefaultLatchExpiryTime.ToTimeSpan().Humanize(4)}).");
@@ -202,39 +186,13 @@ public class Config
             await ctx.Reply($"{Emojis.Success} Latch timeout set to {newTimeout.Value!.ToTimeSpan().Humanize(4)}.");
     }
 
-    public async Task SystemPing(Context ctx)
-    {
-        ctx.CheckSystem();
-
-        if (!ctx.HasNext())
-        {
-            if (ctx.Config.PingsEnabled) { await ctx.Reply("Reaction pings are currently **enabled** for your system. To disable reaction pings, type `pk;config ping disable`."); }
-            else { await ctx.Reply("Reaction pings are currently **disabled** for your system. To enable reaction pings, type `pk;config ping enable`."); }
-        }
-        else
-        {
-            if (ctx.Match("on", "enable"))
-            {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { PingsEnabled = true });
-
-                await ctx.Reply("Reaction pings have now been enabled.");
-            }
-            if (ctx.Match("off", "disable"))
-            {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { PingsEnabled = false });
-
-                await ctx.Reply("Reaction pings have now been disabled.");
-            }
-        }
-    }
-
     public async Task SystemTimezone(Context ctx)
     {
         if (ctx.System == null) throw Errors.NoSystemError;
 
         if (await ctx.MatchClear())
         {
-            await _repo.UpdateSystemConfig(ctx.System.Id, new() { UiTz = "UTC" });
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { UiTz = "UTC" });
 
             await ctx.Reply($"{Emojis.Success} System time zone cleared (set to UTC).");
             return;
@@ -255,7 +213,7 @@ public class Config
         var msg = $"This will change the system time zone to **{zone.Id}**. The current time is **{currentTime.FormatZoned()}**. Is this correct?";
         if (!await ctx.PromptYesNo(msg, "Change Timezone")) throw Errors.TimezoneChangeCancelled;
 
-        await _repo.UpdateSystemConfig(ctx.System.Id, new() { UiTz = zone.Id });
+        await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { UiTz = zone.Id });
 
         await ctx.Reply($"System time zone changed to **{zone.Id}**.");
     }
@@ -320,7 +278,33 @@ public class Config
             });
     }
 
-    // todo: this command parsing is really messy
+    public async Task SystemPing(Context ctx)
+    {
+        // note: this is here because this is also used in `pk;system ping`, which does not CheckSystem
+        ctx.CheckSystem();
+
+        // todo: move all the other config settings to this format
+
+        String Response(bool isError, bool val)
+            => $"Reaction pings are {(isError ? "already" : "currently")} **{EnabledDisabled(val)}** for your system. "
+             + $"To {EnabledDisabled(!val)[..^1]} reaction pings, type `pk;config ping {EnabledDisabled(!val)[..^1]}`.";
+
+        if (!ctx.HasNext())
+        {
+            await ctx.Reply(Response(false, ctx.Config.PingsEnabled));
+            return;
+        }
+
+        var value = ctx.MatchToggle();
+
+        if (ctx.Config.PingsEnabled == value)
+            await ctx.Reply(Response(true, ctx.Config.PingsEnabled));
+        else
+        {
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { PingsEnabled = value });
+            await ctx.Reply($"Reaction pings have now been {EnabledDisabled(value)}.");
+        }
+    }
 
     public async Task MemberDefaultPrivacy(Context ctx)
     {
@@ -331,15 +315,15 @@ public class Config
         }
         else
         {
-            if (ctx.Match("on", "enable"))
+            if (ctx.MatchToggle())
             {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { MemberDefaultPrivate = true });
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { MemberDefaultPrivate = true });
 
                 await ctx.Reply("Newly created members will now have their privacy settings set to private.");
             }
-            if (ctx.Match("off", "disable"))
+            else
             {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { MemberDefaultPrivate = false });
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { MemberDefaultPrivate = false });
 
                 await ctx.Reply("Newly created members will now have their privacy settings set to public.");
             }
@@ -355,15 +339,15 @@ public class Config
         }
         else
         {
-            if (ctx.Match("on", "enable"))
+            if (ctx.MatchToggle())
             {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { GroupDefaultPrivate = true });
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { GroupDefaultPrivate = true });
 
                 await ctx.Reply("Newly created groups will now have their privacy settings set to private.");
             }
-            if (ctx.Match("off", "disable"))
+            else
             {
-                await _repo.UpdateSystemConfig(ctx.System.Id, new() { GroupDefaultPrivate = false });
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { GroupDefaultPrivate = false });
 
                 await ctx.Reply("Newly created groups will now have their privacy settings set to public.");
             }
@@ -379,18 +363,17 @@ public class Config
             return;
         }
 
-        if (ctx.Match("true"))
+        if (ctx.MatchToggle())
         {
-            await _repo.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = true });
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = true });
 
             await ctx.Reply("Private information will now be **shown** when looking up your own info. Use the `-public` flag to hide it.");
         }
-        else if (ctx.Match("false"))
+        else
         {
-            await _repo.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = false });
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = false });
 
             await ctx.Reply("Private information will now be **hidden** when looking up your own info. Use the `-private` flag to show it.");
         }
-        else throw new PKError("You must pass 'true' or 'false' to this command.");
     }
 }

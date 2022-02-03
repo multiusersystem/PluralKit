@@ -31,6 +31,7 @@ public class BotModule: Module
                 Token = botConfig.Token,
                 MaxShardConcurrency = botConfig.MaxShardConcurrency,
                 GatewayQueueUrl = botConfig.GatewayQueueUrl,
+                UseRedisRatelimiter = botConfig.UseRedisRatelimiter,
                 Intents = GatewayIntent.Guilds |
                           GatewayIntent.DirectMessages |
                           GatewayIntent.DirectMessageReactions |
@@ -42,6 +43,7 @@ public class BotModule: Module
         }).AsSelf().SingleInstance();
         builder.RegisterType<Cluster>().AsSelf().SingleInstance();
         builder.Register(c => { return new MemoryDiscordCache(); }).AsSelf().As<IDiscordCache>().SingleInstance();
+        builder.RegisterType<PrivateChannelService>().AsSelf().SingleInstance();
 
         builder.Register(c =>
         {

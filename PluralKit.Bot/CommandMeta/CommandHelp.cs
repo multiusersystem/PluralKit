@@ -26,6 +26,10 @@ public partial class CommandTree
     public static Command ConfigMemberDefaultPrivacy = new("config private member", "config private member [on|off]", "Sets whether member privacy is automatically set to private when creating a new member");
     public static Command ConfigGroupDefaultPrivacy = new("config private group", "config private group [on|off]", "Sets whether group privacy is automatically set to private when creating a new group");
     public static Command AutoproxySet = new Command("autoproxy", "autoproxy [off|front|latch|member]", "Sets your system's autoproxy mode for the current server");
+    public static Command AutoproxyOff = new Command("autoproxy off", "autoproxy off", "Disables autoproxying for your system in the current server");
+    public static Command AutoproxyFront = new Command("autoproxy front", "autoproxy front", "Sets your system's autoproxy in this server to proxy the first member currently registered as front");
+    public static Command AutoproxyLatch = new Command("autoproxy latch", "autoproxy latch", "Sets your system's autoproxy in this server to proxy the last manually proxied member");
+    public static Command AutoproxyMember = new Command("autoproxy member", "autoproxy <member>", "Sets your system's autoproxy in this server to proxy a specific member");
     public static Command MemberInfo = new Command("member", "member <member>", "Looks up information about a member");
     public static Command MemberNew = new Command("member new", "member new <name>", "Creates a new member");
     public static Command MemberRename = new Command("member rename", "member <member> rename <new name>", "Renames a member");
@@ -57,7 +61,7 @@ public partial class CommandTree
     public static Command GroupColor = new Command("group color", "group <group> color [color]", "Changes a group's color");
     public static Command GroupAdd = new Command("group add", "group <group> add <member> [member 2] [member 3...]", "Adds one or more members to a group");
     public static Command GroupRemove = new Command("group remove", "group <group> remove <member> [member 2] [member 3...]", "Removes one or more members from a group");
-    public static Command GroupPrivacy = new Command("group privacy", "group <group> privacy <description|icon|visibility|all> <public|private>", "Changes a group's privacy settings");
+    public static Command GroupPrivacy = new Command("group privacy", "group <group> privacy <name|description|icon|metadata|visibility|all> <public|private>", "Changes a group's privacy settings");
     public static Command GroupBannerImage = new Command("group banner", "group <group> banner [url]", "Set the group's banner image");
     public static Command GroupIcon = new Command("group icon", "group <group> icon [url|@mention]", "Changes a group's icon");
     public static Command GroupDelete = new Command("group delete", "group <group> delete", "Deletes a group");
@@ -129,6 +133,11 @@ public partial class CommandTree
     {
         ConfigTimezone, ConfigPing, ConfigAutoproxyAccount, ConfigAutoproxyTimeout,
         ConfigMemberDefaultPrivacy, ConfigGroupDefaultPrivacy
+    };
+
+    public static Command[] AutoproxyCommands =
+    {
+        AutoproxyOff, AutoproxyFront, AutoproxyLatch, AutoproxyMember
     };
 
     public static Command[] LogCommands = { LogChannel, LogChannelClear, LogEnable, LogDisable };

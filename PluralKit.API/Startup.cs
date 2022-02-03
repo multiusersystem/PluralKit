@@ -64,15 +64,6 @@ public class Startup
                     throw Errors.GenericBadRequest
             );
 
-        services.AddApiVersioning();
-
-        services.AddVersionedApiExplorer(c =>
-        {
-            c.GroupNameFormat = "'v'VV";
-            c.ApiVersionParameterSource = new UrlSegmentApiVersionReader();
-            c.SubstituteApiVersionInUrl = true;
-        });
-
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1.0", new OpenApiInfo { Title = "PluralKit", Version = "1.0" });
@@ -124,7 +115,7 @@ public class Startup
         // add X-PluralKit-Version header
         app.Use((ctx, next) =>
         {
-            ctx.Response.Headers.Add("X-PluralKit-Version", BuildInfoService.Version);
+            ctx.Response.Headers.Add("X-PluralKit-Version", BuildInfoService.FullVersion);
             return next();
         });
 

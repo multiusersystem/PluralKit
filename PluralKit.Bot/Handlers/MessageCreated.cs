@@ -28,12 +28,13 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
     private readonly DiscordApiClient _rest;
     private readonly ILifetimeScope _services;
     private readonly CommandTree _tree;
+    private readonly PrivateChannelService _dmCache;
 
     public MessageCreated(LastMessageCacheService lastMessageCache, LoggerCleanService loggerClean,
                           IMetrics metrics, ProxyService proxy,
                           CommandTree tree, ILifetimeScope services, IDatabase db, BotConfig config,
                           ModelRepository repo, IDiscordCache cache,
-                          Bot bot, Cluster cluster, DiscordApiClient rest)
+                          Bot bot, Cluster cluster, DiscordApiClient rest, PrivateChannelService dmCache)
     {
         _lastMessageCache = lastMessageCache;
         _loggerClean = loggerClean;
@@ -48,16 +49,12 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         _bot = bot;
         _cluster = cluster;
         _rest = rest;
+        _dmCache = dmCache;
     }
 
     // for now, only return error messages for explicit commands
-    public ulong? ErrorChannelFor(MessageCreateEvent evt)
+    public ulong? ErrorChannelFor(MessageCreateEvent evt, ulong userId)
     {
-        // todo: fix @mention prefix
-        // it only breaks error reporting so I'm not *too* worried about it, but should be fixed eventually
-        if (!HasCommandPrefix(evt.Content, default, out var cmdStart) || cmdStart == evt.Content.Length)
-            return null;
-
         return evt.ChannelId;
     }
 
@@ -65,11 +62,15 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         // We consider a message duplicate if it has the same ID as the previous message that hit the gateway
         _lastMessageCache.GetLastMessage(msg.ChannelId)?.Current.Id == msg.Id;
 
-    public async Task Handle(Shard shard, MessageCreateEvent evt)
+    public async Task Handle(int shardId, MessageCreateEvent evt)
     {
-        if (evt.Author.Id == shard.User?.Id) return;
+        if (evt.Author.Id == await _cache.GetOwnUser()) return;
         if (evt.Type != Message.MessageType.Default && evt.Type != Message.MessageType.Reply) return;
         if (IsDuplicateMessage(evt)) return;
+
+        // spawn off saving the private channel into another thread
+        // it is not a fatal error if this fails, and it shouldn't block message processing
+        _ = _dmCache.TrySavePrivateChannel(evt);
 
         var guild = evt.GuildId != null ? await _cache.GetGuild(evt.GuildId.Value) : null;
         var channel = await _cache.GetChannel(evt.ChannelId);
@@ -92,9 +93,9 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         if (evt.Author.Bot || evt.WebhookId != null || evt.Author.System == true)
             return;
 
-        if (await TryHandleCommand(shard, evt, guild, channel, ctx))
+        if (await TryHandleCommand(shardId, evt, guild, channel, ctx))
             return;
-        await TryHandleProxy(shard, evt, guild, channel, ctx);
+        await TryHandleProxy(evt, guild, channel, ctx);
     }
 
     private async ValueTask<bool> TryHandleLogClean(MessageCreateEvent evt, MessageContext ctx)
@@ -107,14 +108,16 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         return true;
     }
 
-    private async ValueTask<bool> TryHandleCommand(Shard shard, MessageCreateEvent evt, Guild? guild,
+    private async ValueTask<bool> TryHandleCommand(int shardId, MessageCreateEvent evt, Guild? guild,
                                                    Channel channel, MessageContext ctx)
     {
         var content = evt.Content;
         if (content == null) return false;
 
+        var ourUserId = await _cache.GetOwnUser();
+
         // Check for command prefix
-        if (!HasCommandPrefix(content, shard.User?.Id ?? default, out var cmdStart) || cmdStart == content.Length)
+        if (!HasCommandPrefix(content, ourUserId, out var cmdStart) || cmdStart == content.Length)
             return false;
 
         // Trim leading whitespace from command without actually modifying the string
@@ -127,7 +130,7 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         {
             var system = ctx.SystemId != null ? await _repo.GetSystem(ctx.SystemId.Value) : null;
             var config = ctx.SystemId != null ? await _repo.GetSystemConfig(ctx.SystemId.Value) : null;
-            await _tree.ExecuteCommand(new Context(_services, shard, guild, channel, evt, cmdStart, system, config, ctx));
+            await _tree.ExecuteCommand(new Context(_services, shardId, guild, channel, evt, cmdStart, system, config, ctx));
         }
         catch (PKError)
         {
@@ -158,14 +161,14 @@ public class MessageCreated: IEventHandler<MessageCreateEvent>
         return false;
     }
 
-    private async ValueTask<bool> TryHandleProxy(Shard shard, MessageCreateEvent evt, Guild guild, Channel channel,
+    private async ValueTask<bool> TryHandleProxy(MessageCreateEvent evt, Guild guild, Channel channel,
                                                  MessageContext ctx)
     {
         var botPermissions = await _cache.PermissionsIn(channel.Id);
 
         try
         {
-            return await _proxy.HandleIncomingMessage(shard, evt, ctx, guild, channel, ctx.AllowAutoproxy,
+            return await _proxy.HandleIncomingMessage(evt, ctx, guild, channel, ctx.AllowAutoproxy,
                 botPermissions);
         }
 
